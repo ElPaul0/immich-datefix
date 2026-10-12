@@ -8,6 +8,8 @@ Not an Immich plugin — a small container in the same Docker stack, talking to 
 
 ## Features
 
+- Local users with a **PIN** — each account stores its Immich API key
+- Login / logout via cookie session (no need to re-paste the key)
 - Scan the whole library via Immich API
 - Detect known filename patterns
 - Checkbox UI: choose which pattern families to fix
@@ -51,7 +53,9 @@ If the GHCR package is private, log in once on the host:
 echo $GITHUB_TOKEN | docker login ghcr.io -u ElPaul0 --password-stdin
 ```
 
-Open `http://<host>:2284`, paste an Immich API key (permissions: `asset.read`, `asset.update`, and search/metadata as needed), scan, dry-run, apply.
+Open `http://<host>:2284`, create a user (username + PIN + Immich API key), then scan / dry-run / apply. Later logins only need username + PIN.
+
+API key permissions: `asset.read`, `asset.update`, and search/metadata as needed. User data lives in the `/data` volume (`users.json`, `sessions.json`).
 
 ## Dev
 

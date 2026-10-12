@@ -20,6 +20,17 @@ header {
   border-bottom: 1px solid var(--border);
 }
 header h1 { margin: 0; font-size: 1.15rem; font-weight: 600; }
+.header-right {
+  margin-left: auto; display: flex; align-items: center; gap: 0.6rem;
+}
+.user-chip {
+  font-size: 0.8rem; color: var(--text-dim);
+  padding: 0.2rem 0.55rem; border: 1px solid var(--border);
+  border-radius: var(--radius); background: var(--bg-row);
+}
+.auth-panel { max-width: 640px; }
+.add-user { margin-top: 0.85rem; color: var(--text-dim); font-size: 0.85rem; }
+.add-user summary { cursor: pointer; margin-bottom: 0.5rem; }
 .badge {
   font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: var(--radius);
   background: var(--bg-row); border: 1px solid var(--border);

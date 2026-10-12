@@ -5,11 +5,12 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from app.auth import AuthStore
 from app.config import get_settings
 from app.immich import ImmichClient, ImmichError
 from app.scanner import apply_fixes, patterns_catalog, scan_library
@@ -18,8 +19,10 @@ STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 settings = get_settings()
 settings.data_dir.mkdir(parents=True, exist_ok=True)
 CONFIG_PATH = settings.data_dir / "config.json"
+COOKIE_NAME = "datefix_session"
 
-app = FastAPI(title="immich-datefix", version="0.2.0")
+app = FastAPI(title="immich-datefix", version="0.3.0")
+auth = AuthStore(settings.data_dir)
 
 _lock = threading.Lock()
 _job: dict[str, Any] = {
@@ -43,19 +46,53 @@ def _load_cfg() -> dict[str, str]:
     return {}
 
 
-def _save_cfg(cfg: dict[str, str]) -> None:
-    CONFIG_PATH.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
-
-
-def _resolved() -> tuple[str, str]:
+def _legacy_defaults() -> tuple[str, str]:
+    """Fallback URL / key from env or old global config.json."""
     cfg = _load_cfg()
     url = (cfg.get("immich_url") or settings.immich_url).rstrip("/")
     key = cfg.get("immich_api_key") or settings.immich_api_key
     return url, key
 
 
-def _client() -> ImmichClient:
-    url, key = _resolved()
+def _session_user(request: Request) -> dict[str, Any] | None:
+    token = request.cookies.get(COOKIE_NAME)
+    sess = auth.get_session(token)
+    if not sess:
+        return None
+    return auth.get_user(sess["username"])
+
+
+def require_user(request: Request) -> dict[str, Any]:
+    user = _session_user(request)
+    if not user:
+        raise HTTPException(401, "Non connecté")
+    return user
+
+
+def _set_session_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=COOKIE_NAME,
+        value=token,
+        httponly=True,
+        samesite="lax",
+        max_age=30 * 86400,
+        path="/",
+    )
+
+
+def _clear_session_cookie(response: Response) -> None:
+    response.delete_cookie(COOKIE_NAME, path="/")
+
+
+def _resolved_for(user: dict[str, Any]) -> tuple[str, str]:
+    legacy_url, _ = _legacy_defaults()
+    url = (user.get("immich_url") or legacy_url or settings.immich_url).rstrip("/")
+    key = user.get("immich_api_key") or ""
+    return url, key
+
+
+def _client_for(user: dict[str, Any]) -> ImmichClient:
+    url, key = _resolved_for(user)
     if not key:
         raise HTTPException(400, "API key Immich manquante (réglages)")
     return ImmichClient(url, key)
@@ -98,14 +135,26 @@ def _job_snapshot() -> dict[str, Any]:
                     if p["matched"] > 0
                 ],
             },
-            # compat ancien champ
             "scanned": done if _job["kind"] == "scan" else _last_scan["scanned"] if _last_scan else 0,
         }
+
+
+class RegisterBody(BaseModel):
+    username: str
+    pin: str
+    immich_api_key: str
+    immich_url: str | None = None
+
+
+class LoginBody(BaseModel):
+    username: str
+    pin: str
 
 
 class SettingsBody(BaseModel):
     immich_url: str | None = None
     immich_api_key: str | None = None
+    pin: str | None = None
 
 
 class ApplyBody(BaseModel):
@@ -115,18 +164,77 @@ class ApplyBody(BaseModel):
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "version": "0.2.0"}
+    return {"ok": True, "version": "0.3.0"}
+
+
+@app.get("/api/auth/status")
+def auth_status(request: Request):
+    needs_setup = auth.user_count() == 0
+    user = _session_user(request)
+    legacy_url, legacy_key = _legacy_defaults()
+    out: dict[str, Any] = {
+        "authenticated": user is not None,
+        "needs_setup": needs_setup,
+        "default_immich_url": legacy_url,
+        "has_legacy_key": bool(legacy_key) and needs_setup,
+    }
+    if user:
+        out["user"] = auth.public_user(user)
+    return out
+
+
+@app.post("/api/auth/register")
+def auth_register(body: RegisterBody, response: Response, request: Request):
+    # First user: open setup. Later: only while logged in.
+    first = auth.user_count() == 0
+    if not first:
+        require_user(request)
+
+    legacy_url, _ = _legacy_defaults()
+    try:
+        user = auth.create_user(
+            body.username,
+            body.pin,
+            body.immich_api_key,
+            immich_url=body.immich_url or legacy_url,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    # Auto-login only on first account (setup); keep current session when adding users.
+    if first:
+        token = auth.create_session(user["username"])
+        _set_session_cookie(response, token)
+    return {"ok": True, "user": auth.public_user(user), "logged_in": first}
+
+
+@app.post("/api/auth/login")
+def auth_login(body: LoginBody, response: Response):
+    user = auth.authenticate(body.username, body.pin)
+    if not user:
+        raise HTTPException(401, "Identifiant ou PIN incorrect")
+    token = auth.create_session(user["username"])
+    _set_session_cookie(response, token)
+    return {"ok": True, "user": auth.public_user(user)}
+
+
+@app.post("/api/auth/logout")
+def auth_logout(request: Request, response: Response):
+    auth.delete_session(request.cookies.get(COOKIE_NAME))
+    _clear_session_cookie(response)
+    return {"ok": True}
 
 
 @app.get("/api/patterns")
-def api_patterns():
+def api_patterns(_user: dict = Depends(require_user)):
     return {"patterns": patterns_catalog()}
 
 
 @app.get("/api/settings")
-def get_settings_api():
-    url, key = _resolved()
+def get_settings_api(user: dict = Depends(require_user)):
+    url, key = _resolved_for(user)
     return {
+        "username": user["username"],
         "immich_url": url,
         "has_api_key": bool(key),
         "api_key_hint": (key[:4] + "…" + key[-4:]) if key and len(key) > 10 else "",
@@ -136,20 +244,32 @@ def get_settings_api():
 
 
 @app.post("/api/settings")
-def set_settings_api(body: SettingsBody):
-    cfg = _load_cfg()
-    if body.immich_url is not None:
-        cfg["immich_url"] = body.immich_url.strip().rstrip("/")
-    if body.immich_api_key is not None and body.immich_api_key.strip():
-        cfg["immich_api_key"] = body.immich_api_key.strip()
-    _save_cfg(cfg)
-    return get_settings_api()
+def set_settings_api(body: SettingsBody, user: dict = Depends(require_user)):
+    try:
+        auth.update_user(
+            user["username"],
+            immich_url=body.immich_url,
+            immich_api_key=body.immich_api_key,
+            pin=body.pin,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    refreshed = auth.get_user(user["username"]) or user
+    url, key = _resolved_for(refreshed)
+    return {
+        "username": refreshed["username"],
+        "immich_url": url,
+        "has_api_key": bool(key),
+        "api_key_hint": (key[:4] + "…" + key[-4:]) if key and len(key) > 10 else "",
+        "min_delta_seconds": settings.min_delta_seconds,
+        "default_hour": settings.default_hour,
+    }
 
 
 @app.post("/api/ping")
-def ping():
+def ping(user: dict = Depends(require_user)):
     try:
-        client = _client()
+        client = _client_for(user)
         ver = client.ping()
         client.close()
         return {"ok": True, "version": ver}
@@ -163,15 +283,18 @@ def ping():
 
 @app.get("/api/job")
 @app.get("/api/scan/status")
-def job_status():
+def job_status(_user: dict = Depends(require_user)):
     return _job_snapshot()
 
 
-def _run_scan() -> None:
+def _run_scan(username: str) -> None:
     global _last_scan
     client = None
     try:
-        client = _client()
+        user = auth.get_user(username)
+        if not user:
+            raise RuntimeError("Session invalide")
+        client = _client_for(user)
         with _lock:
             _job["message"] = "Scan Immich…"
             _job["done"] = 0
@@ -180,7 +303,6 @@ def _run_scan() -> None:
         def prog(n: int) -> None:
             with _lock:
                 _job["done"] = n
-                # total inconnu pendant le scan → barre indéterminée côté UI si total=0
                 _job["message"] = f"Scan… {n} assets"
 
         result = scan_library(client, settings, progress=prog)
@@ -209,7 +331,7 @@ def _run_scan() -> None:
 
 
 @app.post("/api/scan")
-def start_scan():
+def start_scan(user: dict = Depends(require_user)):
     with _lock:
         if _job["state"] == "running":
             raise HTTPException(409, "Un job est déjà en cours")
@@ -224,16 +346,24 @@ def start_scan():
                 "result": None,
             }
         )
-    threading.Thread(target=_run_scan, name="datefix-scan", daemon=True).start()
+    threading.Thread(
+        target=_run_scan,
+        args=(user["username"],),
+        name="datefix-scan",
+        daemon=True,
+    ).start()
     return {"ok": True}
 
 
-def _run_apply(pattern_ids: list[str], dry_run: bool) -> None:
+def _run_apply(username: str, pattern_ids: list[str], dry_run: bool) -> None:
     client = None
     try:
         if not _last_scan:
             raise RuntimeError("Lance un scan d’abord")
-        client = _client()
+        user = auth.get_user(username)
+        if not user:
+            raise RuntimeError("Session invalide")
+        client = _client_for(user)
         selected_n = sum(
             1
             for c in _last_scan["candidates"]
@@ -285,7 +415,7 @@ def _run_apply(pattern_ids: list[str], dry_run: bool) -> None:
 
 
 @app.post("/api/apply")
-def apply(body: ApplyBody):
+def apply(body: ApplyBody, user: dict = Depends(require_user)):
     if not _last_scan:
         raise HTTPException(400, "Lance un scan d’abord")
     if not body.pattern_ids:
@@ -306,7 +436,7 @@ def apply(body: ApplyBody):
         )
     threading.Thread(
         target=_run_apply,
-        args=(list(body.pattern_ids), body.dry_run),
+        args=(user["username"], list(body.pattern_ids), body.dry_run),
         name="datefix-apply",
         daemon=True,
     ).start()
