@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>immich-datefix</title>
+  <link rel="stylesheet" href="/static/style.css?v=2">
+</head>
+<body>
+  <header>
+    <h1>immich-datefix</h1>
+    <span class="badge" id="status-badge">Prêt</span>
+  </header>
+
+  <div id="progress-wrap" class="progress-wrap hidden">
+    <div class="progress-meta">
+      <span id="progress-label">…</span>
+      <span id="progress-pct">0%</span>
+    </div>
+    <div class="progress-track">
+      <div id="progress-bar" class="progress-bar"></div>
+    </div>
+  </div>
+
+  <section class="panel">
+    <h2>Connexion Immich</h2>
+    <div class="row">
+      <label>URL <input id="immich-url" type="text" placeholder="http://immich-server:2283"></label>
+      <label>API key <input id="immich-key" type="password" placeholder="colle une clé Immich"></label>
+      <button type="button" id="btn-save" class="primary">Enregistrer</button>
+      <button type="button" id="btn-ping">Tester</button>
+    </div>
+    <p class="meta" id="settings-meta"></p>
+  </section>
+
+  <section class="panel">
+    <h2>Scan</h2>
+    <p class="hint">
+      Parcourt la bibliothèque Immich, détecte les dates dans les noms de fichiers
+      (WhatsApp, screenshots, timestamps…) et propose les corrections quand la date Immich diffère.
+    </p>
+    <div class="row">
+      <button type="button" id="btn-scan" class="primary">Scanner la bibliothèque</button>
+    </div>
+    <p class="meta" id="scan-meta">Pas encore de scan.</p>
+  </section>
+
+  <section class="panel hidden" id="patterns-section">
+    <h2>Types de noms détectés</h2>
+    <p class="hint">Coche les familles à corriger, puis dry-run ou appliquer.</p>
+    <div class="sel-bar">
+      <button type="button" id="btn-all">Tout</button>
+      <button type="button" id="btn-none">Aucun</button>
+    </div>
+    <div id="pattern-list" class="pattern-list"></div>
+    <div class="row actions">
+      <button type="button" id="btn-dry" class="primary">Dry-run</button>
+      <button type="button" id="btn-apply" class="danger">Appliquer les corrections</button>
+    </div>
+    <pre id="apply-out" class="log hidden"></pre>
+  </section>
+
+  <script src="/static/app.js?v=2"></script>
+</body>
+</html>

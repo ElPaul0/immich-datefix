@@ -1,0 +1,74 @@
+# Clean Immich stack for Portainer (CT200).
+# Datefix pulls from GHCR — no local image / pull_policy: never.
+services:
+  immich-server:
+    container_name: immich_server
+    image: ghcr.io/immich-app/immich-server:release
+    volumes:
+      - /mnt/nas/Nastore/immich:/usr/src/app/upload
+      - /mnt/nas/Nastore:/mnt/nas/Nastore:ro
+    env_file:
+      - stack.env
+    ports:
+      - "2283:2283"
+    depends_on:
+      - redis
+      - database
+    restart: always
+
+  immich-machine-learning:
+    container_name: immich_machine_learning
+    image: ghcr.io/immich-app/immich-machine-learning:release-cuda
+    # NVIDIA device nodes on this host (Proxmox → CT200)
+    device_cgroup_rules:
+      - "c 195:* rwm"
+      - "c 508:* rwm"
+      - "c 511:* rwm"
+      - "c 510:* rwm"
+      - "c 235:* rwm"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    volumes:
+      - /mnt/nas/Nastore/immich/cache:/cache
+    env_file:
+      - stack.env
+    restart: always
+
+  redis:
+    container_name: immich_redis
+    image: redis:6.2-alpine
+    volumes:
+      - /mnt/data/immich/redis:/data
+    restart: always
+
+  database:
+    container_name: immich_postgres
+    image: ghcr.io/immich-app/postgres:14-vectorchord0.3.0-pgvectors0.2.0
+    env_file:
+      - stack.env
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_DB: ${DB_DATABASE_NAME}
+    volumes:
+      - /mnt/data/immich/db:/var/lib/postgresql/data
+    restart: always
+
+  immich-datefix:
+    container_name: immich_datefix
+    image: ghcr.io/elpaul0/immich-datefix:latest
+    restart: always
+    ports:
+      - "2284:8080"
+    environment:
+      IMMICH_URL: http://immich-server:2283
+      TZ: Europe/Paris
+    volumes:
+      - /mnt/data/immich/datefix:/data
+    depends_on:
+      - immich-server

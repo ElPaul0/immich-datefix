@@ -1,0 +1,14 @@
+# Drop into your Immich compose (same network / stack).
+  immich-datefix:
+    container_name: immich_datefix
+    image: ghcr.io/elpaul0/immich-datefix:latest
+    restart: always
+    ports:
+      - "2284:8080"
+    environment:
+      IMMICH_URL: http://immich-server:2283
+      TZ: Europe/Paris
+    volumes:
+      - /mnt/data/immich/datefix:/data
+    depends_on:
+      - immich-server
