@@ -1,34 +1,42 @@
 <!DOCTYPE html>
-<html lang="fr" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>immich-datefix</title>
-  <link rel="stylesheet" href="/static/style.css?v=3">
+  <link rel="stylesheet" href="/static/style.css?v=4">
 </head>
 <body>
   <header>
     <h1>immich-datefix</h1>
     <span class="badge" id="status-badge">…</span>
-    <div class="header-right hidden" id="header-user">
-      <span class="user-chip" id="user-chip"></span>
-      <button type="button" id="btn-logout">Déconnexion</button>
+    <div class="header-controls">
+      <div class="toggle-group" role="group" aria-label="Theme">
+        <button type="button" id="btn-theme-dark" data-theme-set="dark">Dark</button>
+        <button type="button" id="btn-theme-light" data-theme-set="light">Light</button>
+      </div>
+      <div class="toggle-group" role="group" aria-label="Language">
+        <button type="button" id="btn-lang-fr" data-lang-set="fr">FR</button>
+        <button type="button" id="btn-lang-en" data-lang-set="en">EN</button>
+      </div>
+      <span class="user-chip hidden" id="user-chip"></span>
+      <button type="button" id="btn-logout" class="hidden" data-i18n="logout">Log out</button>
     </div>
   </header>
 
   <section class="panel auth-panel" id="auth-panel">
-    <h2 id="auth-title">Connexion</h2>
-    <p class="hint" id="auth-hint">Entre ton identifiant et ton code PIN pour retrouver ta clé Immich.</p>
+    <h2 id="auth-title" data-i18n="auth_title_login">Sign in</h2>
+    <p class="hint" id="auth-hint" data-i18n="auth_hint_login">Enter your username and PIN to unlock your Immich API key.</p>
     <div class="row" id="auth-fields">
-      <label>Identifiant <input id="auth-user" type="text" autocomplete="username"></label>
-      <label>PIN (4–8 chiffres) <input id="auth-pin" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password"></label>
+      <label><span data-i18n="username">Username</span> <input id="auth-user" type="text" autocomplete="username"></label>
+      <label><span data-i18n="pin">PIN (4–8 digits)</span> <input id="auth-pin" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password"></label>
     </div>
     <div class="row hidden" id="setup-fields">
-      <label>URL Immich <input id="setup-url" type="text" placeholder="http://immich-server:2283"></label>
-      <label>Clé API Immich <input id="setup-key" type="password" placeholder="colle une clé Immich" autocomplete="off"></label>
+      <label><span data-i18n="immich_url">Immich URL</span> <input id="setup-url" type="text" placeholder="http://immich-server:2283"></label>
+      <label><span data-i18n="immich_key">Immich API key</span> <input id="setup-key" type="password" placeholder="" autocomplete="off"></label>
     </div>
     <div class="row">
-      <button type="button" id="btn-auth" class="primary">Se connecter</button>
+      <button type="button" id="btn-auth" class="primary" data-i18n="login">Sign in</button>
     </div>
     <p class="meta" id="auth-meta"></p>
   </section>
@@ -45,54 +53,54 @@
     </div>
 
     <section class="panel">
-      <h2>Compte &amp; Immich</h2>
+      <h2 data-i18n="account_title">Account &amp; Immich</h2>
       <div class="row">
-        <label>URL <input id="immich-url" type="text" placeholder="http://immich-server:2283"></label>
-        <label>Nouvelle clé API <input id="immich-key" type="password" placeholder="laisser vide pour garder l’actuelle"></label>
-        <label>Nouveau PIN <input id="new-pin" type="password" inputmode="numeric" pattern="[0-9]*" placeholder="optionnel"></label>
-        <button type="button" id="btn-save" class="primary">Enregistrer</button>
-        <button type="button" id="btn-ping">Tester</button>
+        <label><span data-i18n="url">URL</span> <input id="immich-url" type="text" placeholder="http://immich-server:2283"></label>
+        <label><span data-i18n="new_api_key">New API key</span> <input id="immich-key" type="password" data-i18n-placeholder="new_api_key_ph"></label>
+        <label><span data-i18n="new_pin">New PIN</span> <input id="new-pin" type="password" inputmode="numeric" pattern="[0-9]*" data-i18n-placeholder="optional"></label>
+        <button type="button" id="btn-save" class="primary" data-i18n="save">Save</button>
+        <button type="button" id="btn-ping" data-i18n="test">Test</button>
       </div>
       <p class="meta" id="settings-meta"></p>
       <details class="add-user">
-        <summary>Ajouter un autre utilisateur</summary>
+        <summary data-i18n="add_user">Add another user</summary>
         <div class="row">
-          <label>Identifiant <input id="new-user" type="text"></label>
-          <label>PIN <input id="new-user-pin" type="password" inputmode="numeric" pattern="[0-9]*"></label>
-          <label>Clé API Immich <input id="new-user-key" type="password"></label>
-          <button type="button" id="btn-add-user">Créer</button>
+          <label><span data-i18n="username">Username</span> <input id="new-user" type="text"></label>
+          <label><span data-i18n="pin_short">PIN</span> <input id="new-user-pin" type="password" inputmode="numeric" pattern="[0-9]*"></label>
+          <label><span data-i18n="immich_key">Immich API key</span> <input id="new-user-key" type="password"></label>
+          <button type="button" id="btn-add-user" data-i18n="create">Create</button>
         </div>
       </details>
     </section>
 
     <section class="panel">
-      <h2>Scan</h2>
-      <p class="hint">
-        Parcourt la bibliothèque Immich, détecte les dates dans les noms de fichiers
-        (WhatsApp, screenshots, timestamps…) et propose les corrections quand la date Immich diffère.
+      <h2 data-i18n="scan_title">Scan</h2>
+      <p class="hint" data-i18n="scan_hint">
+        Walks the Immich library, detects dates in filenames
+        (WhatsApp, screenshots, timestamps…) and proposes fixes when Immich’s date differs.
       </p>
       <div class="row">
-        <button type="button" id="btn-scan" class="primary">Scanner la bibliothèque</button>
+        <button type="button" id="btn-scan" class="primary" data-i18n="scan_btn">Scan library</button>
       </div>
-      <p class="meta" id="scan-meta">Pas encore de scan.</p>
+      <p class="meta" id="scan-meta" data-i18n="scan_none">No scan yet.</p>
     </section>
 
     <section class="panel hidden" id="patterns-section">
-      <h2>Types de noms détectés</h2>
-      <p class="hint">Coche les familles à corriger, puis dry-run ou appliquer.</p>
+      <h2 data-i18n="patterns_title">Detected filename types</h2>
+      <p class="hint" data-i18n="patterns_hint">Tick the families to fix, then dry-run or apply.</p>
       <div class="sel-bar">
-        <button type="button" id="btn-all">Tout</button>
-        <button type="button" id="btn-none">Aucun</button>
+        <button type="button" id="btn-all" data-i18n="all">All</button>
+        <button type="button" id="btn-none" data-i18n="none">None</button>
       </div>
       <div id="pattern-list" class="pattern-list"></div>
       <div class="row actions">
-        <button type="button" id="btn-dry" class="primary">Dry-run</button>
-        <button type="button" id="btn-apply" class="danger">Appliquer les corrections</button>
+        <button type="button" id="btn-dry" class="primary" data-i18n="dry_run">Dry-run</button>
+        <button type="button" id="btn-apply" class="danger" data-i18n="apply">Apply fixes</button>
       </div>
       <pre id="apply-out" class="log hidden"></pre>
     </section>
   </div>
 
-  <script src="/static/app.js?v=3"></script>
+  <script src="/static/app.js?v=4"></script>
 </body>
 </html>

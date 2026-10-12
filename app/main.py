@@ -21,7 +21,7 @@ settings.data_dir.mkdir(parents=True, exist_ok=True)
 CONFIG_PATH = settings.data_dir / "config.json"
 COOKIE_NAME = "datefix_session"
 
-app = FastAPI(title="immich-datefix", version="0.3.0")
+app = FastAPI(title="immich-datefix", version="0.4.0")
 auth = AuthStore(settings.data_dir)
 
 _lock = threading.Lock()
@@ -164,7 +164,29 @@ class ApplyBody(BaseModel):
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "version": "0.3.0"}
+    return {"ok": True, "version": "0.4.0"}
+
+
+@app.post("/api/job/clear")
+def clear_job(_user: dict = Depends(require_user)):
+    """Drop persisted scan results (UI refresh / post-apply)."""
+    global _last_scan
+    with _lock:
+        if _job["state"] == "running":
+            raise HTTPException(409, "A job is already running")
+        _last_scan = None
+        _job.update(
+            {
+                "kind": None,
+                "state": "idle",
+                "message": "",
+                "done": 0,
+                "total": 0,
+                "error": None,
+                "result": None,
+            }
+        )
+    return {"ok": True}
 
 
 @app.get("/api/auth/status")
@@ -356,10 +378,11 @@ def start_scan(user: dict = Depends(require_user)):
 
 
 def _run_apply(username: str, pattern_ids: list[str], dry_run: bool) -> None:
+    global _last_scan
     client = None
     try:
         if not _last_scan:
-            raise RuntimeError("Lance un scan d’abord")
+            raise RuntimeError("Run a scan first")
         user = auth.get_user(username)
         if not user:
             raise RuntimeError("Session invalide")
@@ -397,12 +420,14 @@ def _run_apply(username: str, pattern_ids: list[str], dry_run: bool) -> None:
             _job["result"] = res
             _job["error"] = None
             if dry_run:
-                _job["message"] = f"Dry-run OK — {res['selected']} fichier(s)"
+                _job["message"] = f"Dry-run OK — {res['selected']} file(s)"
             else:
+                # Clear scan so UI must re-scan to verify
+                _last_scan = None
                 err_n = len(res.get("errors") or [])
                 _job["message"] = (
-                    f"Corrigé {res['updated']}/{res['selected']}"
-                    + (f" · {err_n} erreur(s)" if err_n else "")
+                    f"Fixed {res['updated']}/{res['selected']}"
+                    + (f" · {err_n} error(s)" if err_n else "")
                 )
     except Exception as e:
         with _lock:

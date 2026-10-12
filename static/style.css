@@ -1,4 +1,5 @@
-:root {
+:root,
+[data-theme="dark"] {
   --bg: #1a1d21;
   --bg-panel: #23282e;
   --bg-row: #2a3038;
@@ -6,27 +7,60 @@
   --text: #e4e8ec;
   --text-dim: #9aa3ad;
   --accent: #3d8fd1;
+  --accent-contrast: #fff;
   --ok: #4caf7a;
   --err: #d9534f;
   --radius: 6px;
   color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --bg: #d8dce1;
+  --bg-panel: #e8ebef;
+  --bg-row: #f0f2f4;
+  --border: #b8c0c8;
+  --text: #2c333a;
+  --text-dim: #5c6670;
+  --accent: #3a7eb0;
+  --accent-contrast: #fff;
+  --ok: #3d8f62;
+  --err: #c04542;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
   font-family: "Segoe UI", system-ui, sans-serif;
 }
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); min-height: 100vh; }
 header {
-  display: flex; align-items: center; gap: 1rem;
+  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
   padding: 0.85rem 1.25rem; background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
 }
 header h1 { margin: 0; font-size: 1.15rem; font-weight: 600; }
-.header-right {
-  margin-left: auto; display: flex; align-items: center; gap: 0.6rem;
+.header-controls {
+  margin-left: auto; display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;
 }
 .user-chip {
   font-size: 0.8rem; color: var(--text-dim);
   padding: 0.2rem 0.55rem; border: 1px solid var(--border);
   border-radius: var(--radius); background: var(--bg-row);
+}
+.toggle-group {
+  display: inline-flex; border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.toggle-group button {
+  border: none; border-radius: 0; padding: 0.28rem 0.55rem;
+  font-size: 0.75rem; background: var(--bg-row); color: var(--text-dim);
+}
+.toggle-group button + button { border-left: 1px solid var(--border); }
+.toggle-group button.is-active {
+  background: var(--accent); color: var(--accent-contrast); font-weight: 600;
 }
 .auth-panel { max-width: 640px; }
 .add-user { margin-top: 0.85rem; color: var(--text-dim); font-size: 0.85rem; }
@@ -54,7 +88,7 @@ button {
   padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);
   background: var(--bg-row); color: var(--text); cursor: pointer;
 }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
 button.danger { border-color: var(--err); color: var(--err); }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 .hidden { display: none !important; }

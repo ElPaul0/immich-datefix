@@ -74,7 +74,7 @@ PATTERNS: list[Pattern] = [
     Pattern(
         id="whatsapp",
         label="WhatsApp",
-        description="IMG-/VID-YYYYMMDD-WA#### — date souvent = réception",
+        description="IMG-/VID-YYYYMMDD-WA#### — date is often receive time",
         example="IMG-20261002-WA0001.jpg",
         regex=re.compile(
             r"^(?:IMG|VID)-(?P<y>\d{4})(?P<mo>\d{2})(?P<d>\d{2})-WA\d+",
@@ -107,7 +107,7 @@ PATTERNS: list[Pattern] = [
     Pattern(
         id="img_underscore",
         label="IMG_YYYYMMDD_HHMMSS",
-        description="Classique appareil / export",
+        description="Common camera / export naming",
         example="IMG_20261002_143015.jpg",
         regex=re.compile(
             r"^IMG_(?P<y>\d{4})(?P<mo>\d{2})(?P<d>\d{2})_(?P<h>\d{2})(?P<mi>\d{2})(?P<s>\d{2})",
@@ -118,7 +118,7 @@ PATTERNS: list[Pattern] = [
     Pattern(
         id="yyyymmdd_hhmmss",
         label="YYYYMMDD_HHMMSS",
-        description="Préfixe date-heure compact",
+        description="Compact date-time prefix",
         example="20261002_143015.jpg",
         regex=re.compile(
             r"^(?P<y>\d{4})(?P<mo>\d{2})(?P<d>\d{2})[_-](?P<h>\d{2})(?P<mi>\d{2})(?P<s>\d{2})\b"
@@ -128,7 +128,7 @@ PATTERNS: list[Pattern] = [
     Pattern(
         id="iso_filename",
         label="YYYY-MM-DD_HH-MM-SS",
-        description="ISO-ish dans le nom",
+        description="ISO-ish date in the filename",
         example="2026-10-02_14-30-15.jpg",
         regex=re.compile(
             r"(?P<y>\d{4})-(?P<mo>\d{2})-(?P<d>\d{2})[ _](?P<h>\d{2})-(?P<mi>\d{2})-(?P<s>\d{2})"
@@ -138,7 +138,7 @@ PATTERNS: list[Pattern] = [
     Pattern(
         id="unix_ms",
         label="Timestamp Unix (ms)",
-        description="13 chiffres (epoch millisecondes)",
+        description="13 digits (Unix epoch milliseconds)",
         example="1727872215123.jpg",
         regex=re.compile(r"^(?P<ts>1[6-9]\d{11})\b"),
         parse=_unix_ms,
@@ -146,7 +146,7 @@ PATTERNS: list[Pattern] = [
     Pattern(
         id="unix_s",
         label="Timestamp Unix (s)",
-        description="10 chiffres (epoch secondes)",
+        description="10 digits (Unix epoch seconds)",
         example="1727872215.jpg",
         regex=re.compile(r"^(?P<ts>1[6-9]\d{8})\b"),
         parse=_unix_s,
@@ -154,7 +154,7 @@ PATTERNS: list[Pattern] = [
     Pattern(
         id="dotnet_ticks",
         label="Ticks (.NET / Facebook-like)",
-        description="~18 chiffres (ticks 100ns depuis year 1)",
+        description="~18 digits (.NET / Facebook-like ticks)",
         example="638639184000000000.jpg",
         regex=re.compile(r"(?P<ticks>63\d{16})\b"),
         parse=_dotnet_ticks,

@@ -10,7 +10,8 @@ Not an Immich plugin — a small container in the same Docker stack, talking to 
 
 - Local users with a **PIN** — each account stores its Immich API key
 - Login / logout via cookie session (no need to re-paste the key)
-- Scan the whole library via Immich API
+- **Dark / light** UI (matte greys) and **EN / FR** language toggle
+- Scan the whole library via Immich API (results are **not** kept across refresh; re-scan after apply to verify)
 - Detect known filename patterns
 - Checkbox UI: choose which pattern families to fix
 - Dry-run then apply (`dateTimeOriginal` bulk update)
