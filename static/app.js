@@ -13,6 +13,11 @@ const I18N = {
     immich_key: "Immich API key",
     login: "Sign in",
     create_login: "Create & sign in",
+    auth_title_register: "Create an account",
+    auth_hint_register: "Pick a username, a PIN, and attach an Immich API key.",
+    create_account: "Create account",
+    switch_to_register: "Add a user",
+    switch_to_login: "Already have an account? Sign in",
     account_title: "Account & Immich",
     url: "URL",
     new_api_key: "New API key",
@@ -77,6 +82,11 @@ const I18N = {
     immich_key: "Clé API Immich",
     login: "Se connecter",
     create_login: "Créer et se connecter",
+    auth_title_register: "Créer un compte",
+    auth_hint_register: "Choisis un identifiant, un PIN, et associe une clé API Immich.",
+    create_account: "Créer le compte",
+    switch_to_register: "Ajouter un utilisateur",
+    switch_to_login: "Déjà un compte ? Se connecter",
     account_title: "Compte & Immich",
     url: "URL",
     new_api_key: "Nouvelle clé API",
@@ -170,6 +180,7 @@ const btnApply = document.getElementById("btn-apply");
 let pollTimer = null;
 let lastPatterns = [];
 let authMode = "login";
+let authDefaults = {};
 let lang = localStorage.getItem("datefix_lang") || "en";
 let theme = localStorage.getItem("datefix_theme") || "dark";
 let sessionScanActive = false; // only show scan UI for this page session
@@ -199,7 +210,7 @@ function applyLang() {
   document.querySelectorAll("[data-i18n]").forEach((el) => {
     const key = el.getAttribute("data-i18n");
     if (!key) return;
-    if (el.id === "auth-title" || el.id === "auth-hint" || el.id === "btn-auth") return;
+    if (el.id === "auth-title" || el.id === "auth-hint" || el.id === "btn-auth" || el.id === "btn-auth-switch") return;
     if (el.id === "scan-meta" && sessionScanActive) return;
     el.textContent = t(key);
   });
@@ -220,14 +231,25 @@ function applyLang() {
 }
 
 function paintAuthCopy() {
+  const switchBtn = document.getElementById("btn-auth-switch");
+  const switchRow = document.getElementById("auth-switch-row");
   if (authMode === "setup") {
     authTitle.textContent = t("auth_title_setup");
     authHint.textContent = t("auth_hint_setup");
     btnAuth.textContent = t("create_login");
+    switchRow.classList.add("hidden");
+  } else if (authMode === "register") {
+    authTitle.textContent = t("auth_title_register");
+    authHint.textContent = t("auth_hint_register");
+    btnAuth.textContent = t("create_account");
+    switchBtn.textContent = t("switch_to_login");
+    switchRow.classList.remove("hidden");
   } else {
     authTitle.textContent = t("auth_title_login");
     authHint.textContent = t("auth_hint_login");
     btnAuth.textContent = t("login");
+    switchBtn.textContent = t("switch_to_register");
+    switchRow.classList.remove("hidden");
   }
 }
 
@@ -277,15 +299,17 @@ function clearScanUi(messageKey = "scan_none") {
 
 function showAuth(mode, defaults = {}) {
   authMode = mode;
+  authDefaults = defaults;
   authPanel.classList.remove("hidden");
   appRoot.classList.add("hidden");
   userChip.classList.add("hidden");
   btnLogout.classList.add("hidden");
-  setupFields.classList.toggle("hidden", mode !== "setup");
+  setupFields.classList.toggle("hidden", mode === "login");
   paintAuthCopy();
-  if (mode === "setup") {
-    document.getElementById("setup-url").value = defaults.immich_url || "";
-    authMeta.textContent = defaults.has_legacy_key ? t("auth_legacy") : "";
+  if (mode === "setup" || mode === "register") {
+    const urlInput = document.getElementById("setup-url");
+    if (!urlInput.value) urlInput.value = defaults.immich_url || "";
+    authMeta.textContent = mode === "setup" && defaults.has_legacy_key ? t("auth_legacy") : "";
   } else {
     authMeta.textContent = "";
   }
@@ -354,7 +378,7 @@ async function boot() {
     return;
   }
   if (!st.authenticated) {
-    showAuth("login");
+    showAuth("login", { immich_url: st.default_immich_url });
     return;
   }
   showApp(st.user);
@@ -375,7 +399,7 @@ btnAuth.addEventListener("click", async () => {
   const username = document.getElementById("auth-user").value.trim();
   const pin = document.getElementById("auth-pin").value.trim();
   try {
-    if (authMode === "setup") {
+    if (authMode === "setup" || authMode === "register") {
       await api("/api/auth/register", {
         method: "POST",
         body: JSON.stringify({
@@ -398,6 +422,11 @@ btnAuth.addEventListener("click", async () => {
     authMeta.textContent = e.message;
     setBadge(t("error"), "err");
   }
+});
+
+document.getElementById("btn-auth-switch").addEventListener("click", () => {
+  const next = authMode === "register" ? "login" : "register";
+  showAuth(next, authDefaults);
 });
 
 btnLogout.addEventListener("click", async () => {

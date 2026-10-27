@@ -207,11 +207,9 @@ def auth_status(request: Request):
 
 @app.post("/api/auth/register")
 def auth_register(body: RegisterBody, response: Response, request: Request):
-    # First user: open setup. Later: only while logged in.
-    first = auth.user_count() == 0
-    if not first:
-        require_user(request)
-
+    # Logged-out (including first setup) signs in as the new account.
+    # A session that adds someone else stays on the current user.
+    current = _session_user(request)
     legacy_url, _ = _legacy_defaults()
     try:
         user = auth.create_user(
@@ -223,11 +221,11 @@ def auth_register(body: RegisterBody, response: Response, request: Request):
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
 
-    # Auto-login only on first account (setup); keep current session when adding users.
-    if first:
+    logged_in = current is None
+    if logged_in:
         token = auth.create_session(user["username"])
         _set_session_cookie(response, token)
-    return {"ok": True, "user": auth.public_user(user), "logged_in": first}
+    return {"ok": True, "user": auth.public_user(user), "logged_in": logged_in}
 
 
 @app.post("/api/auth/login")
